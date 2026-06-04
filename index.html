@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wiker Preventa (Presale)</title>
+    <link rel="icon" href="./wkr-favicon.png" type="image/png" />
+    <link rel="shortcut icon" href="./wkr-favicon.png" type="image/png" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <section class="hero-panel" aria-label="Wiker Preventa">
+        <div class="brand-row">
+          <div class="brand-mark" aria-hidden="true">
+            <img src="./wkr-favicon.png" alt="" />
+          </div>
+          <div>
+            <p class="eyebrow">Wiker</p>
+            <h1>Preventa <span>(Presale)</span> WKR</h1>
+          </div>
+        </div>
+
+        <div class="value-strip" aria-label="Contexto Wiker">
+          <div>
+            <strong>Mercado rural latinoamericano</strong>
+            <span>Marketplace farmers LATAM</span>
+          </div>
+          <div>
+            <strong>Compra directa con monedas estables</strong>
+            <span>Stablecoins</span>
+          </div>
+          <div>
+            <strong>Gobernanza Wiker</strong>
+            <span>WKR governance token</span>
+          </div>
+        </div>
+
+        <div class="content-grid">
+          <section class="buy-card" aria-label="Comprar WKR">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Comprar WKR</p>
+                <h2>Una wallet, una compra clara</h2>
+              </div>
+              <div class="wallet-actions">
+                <button id="connectMetaMask" class="icon-button primary" type="button">MetaMask</button>
+                <button id="connectWalletConnect" class="icon-button secondary" type="button">WalletConnect</button>
+              </div>
+            </div>
+
+            <div id="statusMessage" class="status-message">Conectá tu wallet para ver la preventa.</div>
+
+            <div class="input-block">
+              <label for="paymentToken">Moneda de pago <span>Payment token</span></label>
+              <select id="paymentToken">
+                <option value="USDT">USDT</option>
+                <option value="USDC">USDC</option>
+                <option value="ETH">ETH</option>
+              </select>
+            </div>
+
+            <div class="input-block">
+              <label for="payAmount">Monto a pagar <span>Amount to pay</span></label>
+              <input id="payAmount" inputmode="decimal" placeholder="0.00" />
+            </div>
+
+            <div class="quote-box">
+              <span>Recibís aproximadamente</span>
+              <strong id="wkrQuote">0 WKR</strong>
+              <small>Tus WKR quedan reservados hasta finalizar la preventa. Máximo 10.000 WKR por dirección.</small>
+            </div>
+
+            <div class="action-row">
+              <button id="approveButton" class="action-button secondary-action" type="button">Aprobar</button>
+              <button id="buyButton" class="action-button primary-action" type="button">Comprar WKR</button>
+            </div>
+
+            <div class="claim-box">
+              <div>
+                <span>Reclamo de tokens</span>
+                <strong id="claimStatusLabel">Disponible al finalizar la preventa</strong>
+              </div>
+              <button id="claimButton" class="action-button claim-action" type="button">Reclamar WKR</button>
+            </div>
+          </section>
+
+          <aside class="stats-card" aria-label="Estado de preventa">
+            <div class="stat">
+              <span>Fase actual</span>
+              <strong id="phaseLabel">-</strong>
+            </div>
+            <div class="stat">
+              <span>Precio actual</span>
+              <strong id="priceLabel">-</strong>
+            </div>
+            <div class="stat">
+              <span>WKR disponibles</span>
+              <strong id="remainingLabel">-</strong>
+            </div>
+            <div class="stat">
+              <span>Tu reserva</span>
+              <strong id="reservedLabel">-</strong>
+            </div>
+            <div class="stat">
+              <span>Máximo por dirección</span>
+              <strong>10000 WKR</strong>
+            </div>
+            <div class="stat">
+              <span>Estado</span>
+              <strong id="timeLabel">-</strong>
+            </div>
+            <div class="network-box">
+              <span>Red</span>
+              <strong id="networkLabel">Arbitrum Sepolia</strong>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+    <script src="./config.js"></script>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
