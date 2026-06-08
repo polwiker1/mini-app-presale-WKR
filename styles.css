@@ -388,6 +388,14 @@ select:focus {
   background: var(--blue);
 }
 
+.network-box span {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.network-box strong {
+  color: #ffffff;
+}
+
 @media (max-width: 860px) {
   .page-shell {
     padding: 14px;
