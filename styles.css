@@ -381,6 +381,11 @@ select:focus {
   font-size: 22px;
 }
 
+#phaseLabel {
+  font-size: 18px;
+  line-height: 1.35;
+}
+
 .network-box {
   margin-top: 16px;
   padding: 14px;

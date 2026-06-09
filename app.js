@@ -10,16 +10,18 @@ const DEFAULT_CONFIG = {
   usdtAddress: "0x0000000000000000000000000000000000000000",
   usdcAddress: "0x0000000000000000000000000000000000000000",
   walletConnectProjectId: "",
-  minPurchase: "10",
+  minPurchase: "1",
 };
 
 const CONFIG = { ...DEFAULT_CONFIG, ...(window.WIKER_CONFIG || {}) };
 const MAX_PRESALE_PER_WALLET = 10_000n * 10n ** 18n;
+const MIN_ETH_PURCHASE = 100_000_000_000_000n;
 
 const PRESALE_ABI = [
   { name: "buyWithStable", type: "function", stateMutability: "nonpayable", inputs: [{ type: "address" }, { type: "uint256" }], outputs: [] },
   { name: "buyWithEth", type: "function", stateMutability: "payable", inputs: [], outputs: [] },
   { name: "claim", type: "function", stateMutability: "nonpayable", inputs: [], outputs: [] },
+  { name: "getEtherPrice", type: "function", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
   { name: "currentPhase", type: "function", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
   { name: "phases", type: "function", stateMutability: "view", inputs: [{ type: "uint256" }, { type: "uint256" }], outputs: [{ type: "uint256" }] },
   { name: "totalSold", type: "function", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
@@ -41,10 +43,12 @@ const state = {
   provider: null,
   account: null,
   phase: 0n,
+  phaseEndTimes: [0n, 0n, 0n],
   priceUsd6: 0n,
   maxSellingAmount: 0n,
   totalSold: 0n,
   reserved: 0n,
+  ethPriceUsd18: 0n,
   startingTime: 0n,
   endingTime: 0n,
   decimals: { USDT: 6, USDC: 6, ETH: 18, WKR: 18 },
@@ -69,16 +73,16 @@ const elements = {
   networkLabel: document.querySelector("#networkLabel"),
 };
 
-elements.connectMetaMask.addEventListener("click", connectMetaMask);
-elements.connectWalletConnect.addEventListener("click", connectWalletConnect);
-elements.paymentToken.addEventListener("change", refreshUi);
+elements.connectMetaMask.addEventListener("click", () => runAction(connectMetaMask));
+elements.connectWalletConnect.addEventListener("click", () => runAction(connectWalletConnect));
+elements.paymentToken.addEventListener("change", handlePaymentTokenChange);
 elements.payAmount.addEventListener("input", refreshQuote);
-elements.approveButton.addEventListener("click", approveStable);
-elements.buyButton.addEventListener("click", buyWkr);
-elements.claimButton.addEventListener("click", claimWkr);
+elements.approveButton.addEventListener("click", () => runAction(approveStable));
+elements.buyButton.addEventListener("click", () => runAction(buyWkr));
+elements.claimButton.addEventListener("click", () => runAction(claimWkr));
 
 if (window.ethereum) {
-  window.ethereum.on("accountsChanged", () => connectMetaMask());
+  window.ethereum.on("accountsChanged", () => runAction(connectMetaMask));
   window.ethereum.on("chainChanged", () => window.location.reload());
 }
 
@@ -155,6 +159,9 @@ async function loadOnChainState() {
 
   state.phase = await readContract(CONFIG.presaleAddress, PRESALE_ABI, "currentPhase", []);
   state.priceUsd6 = await readContract(CONFIG.presaleAddress, PRESALE_ABI, "phases", [state.phase, 1n]);
+  state.phaseEndTimes = await Promise.all(
+    [0n, 1n, 2n].map((phase) => readContract(CONFIG.presaleAddress, PRESALE_ABI, "phases", [phase, 2n])),
+  );
   state.totalSold = await readContract(CONFIG.presaleAddress, PRESALE_ABI, "totalSold", []);
   state.maxSellingAmount = await readContract(CONFIG.presaleAddress, PRESALE_ABI, "maxSellingAmount", []);
   state.startingTime = await readContract(CONFIG.presaleAddress, PRESALE_ABI, "startingTime", []);
@@ -162,6 +169,11 @@ async function loadOnChainState() {
   state.reserved = state.account
     ? await readContract(CONFIG.presaleAddress, PRESALE_ABI, "userTokenBalance", [state.account])
     : 0n;
+  try {
+    state.ethPriceUsd18 = await readContract(CONFIG.presaleAddress, PRESALE_ABI, "getEtherPrice", []);
+  } catch {
+    state.ethPriceUsd18 = 0n;
+  }
 
   for (const symbol of ["USDT", "USDC"]) {
     const address = tokenAddress(symbol);
@@ -190,6 +202,7 @@ async function approveStable() {
 async function buyWkr() {
   await requireReady();
   const symbol = elements.paymentToken.value;
+  let tx;
 
   if (symbol === "ETH") {
     if (!isSaleOpen()) {
@@ -197,14 +210,25 @@ async function buyWkr() {
       return;
     }
     const value = parseAmount(elements.payAmount.value, 18);
-    const tx = await writeContract(CONFIG.presaleAddress, PRESALE_ABI, "buyWithEth", [], value);
-    setStatus(`Compra enviada: ${shortHash(tx)}`, "ok");
+    if (value < MIN_ETH_PURCHASE) {
+      setStatus("La compra mínima con ETH es 0.0001 ETH.", "error");
+      return;
+    }
+    if (state.ethPriceUsd18 && state.reserved + quoteEthWkr(value) > MAX_PRESALE_PER_WALLET) {
+      setStatus("La compra supera el máximo de 10.000 WKR por dirección.", "error");
+      return;
+    }
+    tx = await writeContract(CONFIG.presaleAddress, PRESALE_ABI, "buyWithEth", [], value);
   } else {
     if (!isSaleOpen()) {
       setStatus("La preventa todavia no esta activa o ya finalizo.", "error");
       return;
     }
     const amount = parseAmount(elements.payAmount.value, state.decimals[symbol]);
+    if (amount < 10n ** BigInt(state.decimals[symbol])) {
+      setStatus(`La compra mínima con ${symbol} es 1 ${symbol}.`, "error");
+      return;
+    }
     const address = tokenAddress(symbol);
     const allowance = await readContract(address, ERC20_ABI, "allowance", [state.account, CONFIG.presaleAddress]);
     if (allowance < amount) {
@@ -216,11 +240,13 @@ async function buyWkr() {
       setStatus("La compra supera el máximo de 10.000 WKR por dirección.", "error");
       return;
     }
-    const tx = await writeContract(CONFIG.presaleAddress, PRESALE_ABI, "buyWithStable", [address, amount]);
-    setStatus(`Compra enviada: ${shortHash(tx)}`, "ok");
+    tx = await writeContract(CONFIG.presaleAddress, PRESALE_ABI, "buyWithStable", [address, amount]);
   }
 
+  setStatus(`Compra enviada: ${shortHash(tx)}. Esperando confirmación...`, "ok");
+  await waitForTransaction(tx);
   await loadOnChainState();
+  setStatus(`Compra confirmada: ${shortHash(tx)}`, "ok");
 }
 
 async function claimWkr() {
@@ -235,8 +261,10 @@ async function claimWkr() {
   }
 
   const tx = await writeContract(CONFIG.presaleAddress, PRESALE_ABI, "claim", []);
-  setStatus(`Reclamo enviado: ${shortHash(tx)}`, "ok");
+  setStatus(`Reclamo enviado: ${shortHash(tx)}. Esperando confirmación...`, "ok");
+  await waitForTransaction(tx);
   await loadOnChainState();
+  setStatus(`Reclamo confirmado: ${shortHash(tx)}`, "ok");
 }
 
 async function requireReady() {
@@ -246,11 +274,11 @@ async function requireReady() {
 
 function refreshUi() {
   elements.networkLabel.textContent = CONFIG.chainName;
-  elements.phaseLabel.textContent = state.priceUsd6 ? `Fase ${Number(state.phase) + 1}` : "-";
+  elements.phaseLabel.textContent = formatCurrentPhase();
   elements.priceLabel.textContent = state.priceUsd6 ? `${formatUsd6(state.priceUsd6)} USDT/USDC` : "-";
   const remaining = state.maxSellingAmount > state.totalSold ? state.maxSellingAmount - state.totalSold : 0n;
-  elements.remainingLabel.textContent = state.maxSellingAmount ? `${formatToken(remaining, 18)} WKR` : "-";
-  elements.reservedLabel.textContent = state.account ? `${formatToken(state.reserved, 18)} WKR` : "-";
+  elements.remainingLabel.textContent = state.maxSellingAmount ? `${formatToken(remaining, 18, 1)} WKR` : "-";
+  elements.reservedLabel.textContent = state.account ? `${formatToken(state.reserved, 18, 1)} WKR` : "-";
   elements.timeLabel.textContent = formatSaleStatus();
   elements.approveButton.disabled = elements.paymentToken.value === "ETH";
   elements.claimStatusLabel.textContent = formatClaimStatus();
@@ -258,9 +286,38 @@ function refreshUi() {
   refreshQuote();
 }
 
+function handlePaymentTokenChange() {
+  const symbol = elements.paymentToken.value;
+  elements.payAmount.value = symbol === "ETH" ? "0.0001" : "1";
+  setStatus(`Estás comprando con ${symbol}.`, "ok");
+  refreshUi();
+}
+
 function isSaleOpen() {
   const now = BigInt(Math.floor(Date.now() / 1000));
   return state.startingTime > 0n && now > state.startingTime && now <= state.endingTime;
+}
+
+function formatCurrentPhase() {
+  if (!state.priceUsd6) return "-";
+
+  const phaseIndex = Number(state.phase);
+  const phaseEnd = state.phaseEndTimes[phaseIndex];
+  const phaseStart = phaseIndex === 0 ? state.startingTime : state.phaseEndTimes[phaseIndex - 1];
+  const now = BigInt(Math.floor(Date.now() / 1000));
+  if (!phaseEnd || !phaseStart || now > phaseEnd) return `Fase ${phaseIndex + 1}`;
+
+  const remaining = phaseEnd > now ? phaseEnd - now : 0n;
+  const totalDays = (phaseEnd - phaseStart) / 86_400n;
+  return `Fase ${phaseIndex + 1} · faltan ${formatRemainingDays(remaining)} de ${totalDays} d`;
+}
+
+function formatRemainingDays(seconds) {
+  const days = seconds / 86_400n;
+  const hours = (seconds % 86_400n) / 3_600n;
+  if (days > 0n) return `${days} d`;
+  if (hours > 0n) return `${hours} h`;
+  return `${(seconds % 3_600n) / 60n} min`;
 }
 
 function formatSaleStatus() {
@@ -295,8 +352,12 @@ function refreshQuote() {
     const symbol = elements.paymentToken.value;
     const decimals = state.decimals[symbol];
     const parsed = parseAmount(amount, decimals);
-    const wkrAmount = symbol === "ETH" ? 0n : quoteStableWkr(parsed, decimals);
-    elements.wkrQuote.textContent = symbol === "ETH" ? "Cotiza on-chain al comprar" : `${formatToken(wkrAmount, 18)} WKR`;
+    if (symbol === "ETH" && !state.ethPriceUsd18) {
+      elements.wkrQuote.textContent = "Precio ETH no disponible";
+      return;
+    }
+    const wkrAmount = symbol === "ETH" ? quoteEthWkr(parsed) : quoteStableWkr(parsed, decimals);
+    elements.wkrQuote.textContent = `${formatToken(wkrAmount, 18, 1)} WKR`;
   } catch {
     elements.wkrQuote.textContent = "0 WKR";
   }
@@ -304,6 +365,11 @@ function refreshQuote() {
 
 function quoteStableWkr(amount, decimals) {
   const usd18 = amount * 10n ** BigInt(18 - decimals);
+  return (usd18 * 1_000_000n) / state.priceUsd6;
+}
+
+function quoteEthWkr(amount) {
+  const usd18 = (amount * state.ethPriceUsd18) / 10n ** 18n;
   return (usd18 * 1_000_000n) / state.priceUsd6;
 }
 
@@ -320,7 +386,24 @@ async function writeContract(address, abi, name, args, value = 0n) {
   const data = encodeCall(abi, name, args);
   const tx = { from: state.account, to: address, data };
   if (value > 0n) tx.value = `0x${value.toString(16)}`;
+  const gasPrice = BigInt(await state.provider.request({ method: "eth_gasPrice" }));
+  tx.gasPrice = `0x${((gasPrice * 125n) / 100n).toString(16)}`;
   return state.provider.request({ method: "eth_sendTransaction", params: [tx] });
+}
+
+async function waitForTransaction(txHash) {
+  for (let attempt = 0; attempt < 120; attempt++) {
+    const receipt = await state.provider.request({
+      method: "eth_getTransactionReceipt",
+      params: [txHash],
+    });
+    if (receipt) {
+      if (receipt.status === "0x0") throw new Error("La transacción fue revertida.");
+      return receipt;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+  }
+  throw new Error("La confirmación está tardando demasiado. Revisá la transacción en el explorador.");
 }
 
 function encodeCall(abi, name, args) {
@@ -372,6 +455,26 @@ function setStatus(message, type = "") {
   elements.statusMessage.className = `status-message ${type}`.trim();
 }
 
+async function runAction(action) {
+  try {
+    await action();
+  } catch (error) {
+    setStatus(formatWalletError(error), "error");
+  }
+}
+
+function formatWalletError(error) {
+  if (error && error.code === 4001) return "Transacción rechazada en la wallet.";
+  const message = (error && (error.shortMessage || error.reason || error.message)) || "No se pudo completar la operación.";
+  if (message.includes("Price too old")) return "El precio ETH del oráculo está vencido. Debe actualizarse antes de comprar.";
+  if (message.includes("insufficient funds")) return "Saldo ETH insuficiente para la compra y el gas.";
+  if (message.includes("max fee per gas less than block base fee")) {
+    return "La comisión de red cambió antes del envío. Intentá nuevamente; la app actualizará el gas automáticamente.";
+  }
+  if (message.includes("Exceeds max presale per wallet")) return "La compra supera el máximo de 10.000 WKR por dirección.";
+  return message;
+}
+
 function isConfigured(address) {
   return /^0x[0-9a-fA-F]{40}$/.test(address) && !/^0x0{40}$/i.test(address);
 }
@@ -397,6 +500,7 @@ function keccakSelector(signature) {
     "buyWithStable(address,uint256)": "0xec11125e",
     "buyWithEth()": "0x11b5444f",
     "claim()": "0x4e71d92d",
+    "getEtherPrice()": "0xca7c4dba",
     "currentPhase()": "0x055ad42e",
     "phases(uint256,uint256)": "0x918dafa4",
     "totalSold()": "0x9106d7ba",
