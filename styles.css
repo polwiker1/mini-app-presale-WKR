@@ -70,6 +70,24 @@ button {
   gap: 14px;
 }
 
+.brand-copy {
+  flex: 1;
+}
+
+.network-badge {
+  align-self: flex-start;
+  padding: 7px 10px;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  font-size: 12px;
+}
+
+.network-badge strong {
+  color: var(--blue);
+}
+
 .brand-mark {
   width: 52px;
   height: 52px;
@@ -368,14 +386,15 @@ select:focus {
 }
 
 .stat span,
-.network-box span {
+.claim-limit-box span,
+.claim-limit-box small {
   display: block;
   color: var(--muted);
   font-size: 13px;
 }
 
 .stat strong,
-.network-box strong {
+.claim-limit-box strong {
   display: block;
   margin-top: 4px;
   font-size: 22px;
@@ -386,19 +405,27 @@ select:focus {
   line-height: 1.35;
 }
 
-.network-box {
+.claim-limit-box {
   margin-top: 16px;
   padding: 14px;
   color: white;
   background: var(--blue);
 }
 
-.network-box span {
+.claim-limit-box span,
+.claim-limit-box small {
   color: rgba(255, 255, 255, 0.88);
 }
 
-.network-box strong {
+.claim-limit-box strong {
   color: #ffffff;
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.claim-limit-box small {
+  margin-top: 8px;
+  line-height: 1.4;
 }
 
 @media (max-width: 860px) {
@@ -416,6 +443,10 @@ select:focus {
   .content-grid,
   .value-strip {
     flex-direction: column;
+  }
+
+  .network-badge {
+    align-self: flex-start;
   }
 
   .stats-card {

@@ -67,6 +67,65 @@ contract WKRGovernanceTest is Test {
         assertEq(wkr.totalSupply(), beforeSupply + MINT_AMOUNT);
     }
 
+    function testRevert_DeployWKR_WhenOwnerIsZero() public {
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableInvalidOwner.selector, address(0)));
+        new WKR(address(0), address(timelock));
+    }
+
+    function testRevert_DeployWKR_WhenDaoOwnerIsZero() public {
+        vm.expectRevert("DAO owner zero address");
+        new WKR(owner, address(0));
+    }
+
+    function testRevert_DeployWKR_WhenDaoOwnerMatchesInitialOwner() public {
+        vm.expectRevert("DAO owner must differ from initial owner");
+        new WKR(owner, owner);
+    }
+
+    function testRevert_Mint_WhenRecipientIsZero() public {
+        vm.expectRevert("Mint to zero");
+        wkr.mint(address(0), 1e18);
+    }
+
+    function testRevert_Mint_WhenAmountIsZero() public {
+        vm.expectRevert("Mint zero");
+        wkr.mint(bob, 0);
+    }
+
+    function testRevert_TransferOwnership_WhenNewOwnerIsNotDao() public {
+        vm.expectRevert("Ownership can only move to DAO owner");
+        wkr.transferOwnership(bob);
+    }
+
+    function testRevert_SetMaxTxAmount_WhenAmountIsZero() public {
+        vm.expectRevert("Max tx zero");
+        wkr.setMaxTxAmount(0);
+    }
+
+    function testRevert_SetMaxWalletAmount_WhenAmountIsZero() public {
+        vm.expectRevert("Max wallet zero");
+        wkr.setMaxWalletAmount(0);
+    }
+
+    function testRevert_SetPresaleExempt_WhenAccountIsZero() public {
+        vm.expectRevert("Presale exempt zero");
+        wkr.setPresaleExempt(address(0), true);
+    }
+
+    function testLimitsDisabledAllowTransferAboveInitialLimits() public {
+        address recipient = address(0xCA02);
+        uint256 amount = 20_000e18;
+        wkr.setLimitsEnabled(false);
+
+        wkr.transfer(recipient, amount);
+
+        assertEq(wkr.balanceOf(recipient), amount);
+    }
+
+    function testNoncesStartsAtZero() public view {
+        assertEq(wkr.nonces(alice), 0);
+    }
+
     function testBurnReducesSupply() public {
         uint256 beforeSupply = wkr.totalSupply();
         uint256 burnAmount = 5_000e18;
@@ -279,6 +338,31 @@ contract WKRGovernanceTest is Test {
 
         vm.expectRevert();
         governor.execute(targets, values, calldatas, descriptionHash);
+    }
+
+    function testGovernorProposalsRequireTimelockQueue() public view {
+        assertTrue(governor.proposalNeedsQueuing(0));
+    }
+
+    function testProposerCanCancelPendingProposal() public {
+        vm.prank(alice);
+        wkr.delegate(alice);
+        vm.roll(block.number + 1);
+
+        address[] memory targets = new address[](1);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+        targets[0] = address(governor);
+        calldatas[0] = abi.encodeCall(governor.setProposalThreshold, (20_000e18));
+        string memory description = "Cancel pending proposal";
+
+        vm.prank(alice);
+        uint256 proposalId = governor.propose(targets, values, calldatas, description);
+
+        vm.prank(alice);
+        governor.cancel(targets, values, calldatas, keccak256(bytes(description)));
+
+        assertEq(uint8(governor.state(proposalId)), uint8(IGovernor.ProposalState.Canceled));
     }
 
     function testOperationCannotBeExecutedTwice() public {

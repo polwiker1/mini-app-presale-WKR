@@ -15,6 +15,7 @@ const DEFAULT_CONFIG = {
 
 const CONFIG = { ...DEFAULT_CONFIG, ...(window.WIKER_CONFIG || {}) };
 const MAX_PRESALE_PER_WALLET = 10_000n * 10n ** 18n;
+const MAX_WKR_PER_WALLET = 10_005n * 10n ** 18n;
 const MIN_ETH_PURCHASE = 100_000_000_000_000n;
 
 const PRESALE_ABI = [
@@ -48,6 +49,7 @@ const state = {
   maxSellingAmount: 0n,
   totalSold: 0n,
   reserved: 0n,
+  wkrBalance: 0n,
   ethPriceUsd18: 0n,
   startingTime: 0n,
   endingTime: 0n,
@@ -65,6 +67,7 @@ const elements = {
   buyButton: document.querySelector("#buyButton"),
   claimButton: document.querySelector("#claimButton"),
   claimStatusLabel: document.querySelector("#claimStatusLabel"),
+  claimLimitLabel: document.querySelector("#claimLimitLabel"),
   phaseLabel: document.querySelector("#phaseLabel"),
   priceLabel: document.querySelector("#priceLabel"),
   remainingLabel: document.querySelector("#remainingLabel"),
@@ -152,7 +155,7 @@ async function ensureNetwork() {
 
 async function loadOnChainState() {
   if (!isConfigured(CONFIG.presaleAddress)) {
-    setStatus("Falta configurar la dirección del contrato de preventa (presale).", "error");
+    setStatus("Falta configurar la dirección del contrato de preventa.", "error");
     refreshUi();
     return;
   }
@@ -168,6 +171,9 @@ async function loadOnChainState() {
   state.endingTime = await readContract(CONFIG.presaleAddress, PRESALE_ABI, "endingTime", []);
   state.reserved = state.account
     ? await readContract(CONFIG.presaleAddress, PRESALE_ABI, "userTokenBalance", [state.account])
+    : 0n;
+  state.wkrBalance = state.account && isConfigured(CONFIG.wkrAddress)
+    ? await readContract(CONFIG.wkrAddress, ERC20_ABI, "balanceOf", [state.account])
     : 0n;
   try {
     state.ethPriceUsd18 = await readContract(CONFIG.presaleAddress, PRESALE_ABI, "getEtherPrice", []);
@@ -252,11 +258,21 @@ async function buyWkr() {
 async function claimWkr() {
   await requireReady();
   if (!isClaimOpen()) {
-    setStatus("El reclamo todavia no esta abierto.", "error");
+    setStatus("El reclamo todavía no está abierto.", "error");
     return;
   }
   if (state.reserved === 0n) {
     setStatus("No tenés WKR reservados para reclamar.", "error");
+    return;
+  }
+  state.wkrBalance = await readContract(CONFIG.wkrAddress, ERC20_ABI, "balanceOf", [state.account]);
+  const excess = claimExcess();
+  if (excess > 0n) {
+    setStatus(
+      `No podés reclamar todavía. Transferí al menos ${formatRequiredTransfer(excess)} WKR a otra wallet e intentá nuevamente.`,
+      "error",
+    );
+    refreshUi();
     return;
   }
 
@@ -282,7 +298,8 @@ function refreshUi() {
   elements.timeLabel.textContent = formatSaleStatus();
   elements.approveButton.disabled = elements.paymentToken.value === "ETH";
   elements.claimStatusLabel.textContent = formatClaimStatus();
-  elements.claimButton.disabled = !state.account || !isClaimOpen() || state.reserved === 0n;
+  elements.claimLimitLabel.textContent = formatClaimLimit();
+  elements.claimButton.disabled = !state.account || !isClaimOpen() || state.reserved === 0n || claimExcess() > 0n;
   refreshQuote();
 }
 
@@ -336,9 +353,22 @@ function isClaimOpen() {
 function formatClaimStatus() {
   if (!state.endingTime) return "Disponible al finalizar la preventa";
   if (isClaimOpen()) {
+    if (claimExcess() > 0n) return "Ordená tu saldo antes de reclamar";
     return state.reserved > 0n ? "Reclamo abierto" : "Sin WKR reservados";
   }
   return `Disponible en ${formatDuration(state.endingTime - BigInt(Math.floor(Date.now() / 1000)))}`;
+}
+
+function claimExcess() {
+  const balanceAfterClaim = state.wkrBalance + state.reserved;
+  return balanceAfterClaim > MAX_WKR_PER_WALLET ? balanceAfterClaim - MAX_WKR_PER_WALLET : 0n;
+}
+
+function formatClaimLimit() {
+  if (!state.account) return "Tu saldo actual más los WKR reservados no puede superar 10.005 WKR.";
+  const excess = claimExcess();
+  if (excess > 0n) return `Transferí al menos ${formatRequiredTransfer(excess)} WKR antes de reclamar.`;
+  return "Tu saldo permite reclamar los WKR reservados.";
 }
 
 function refreshQuote() {
@@ -440,6 +470,12 @@ function formatToken(value, decimals, precision = 4) {
   return fractionText && BigInt(fractionText) > 0n ? `${whole}.${fractionText}` : whole.toString();
 }
 
+function formatRequiredTransfer(value) {
+  const unit = 10n ** 12n;
+  const roundedUp = ((value + unit - 1n) / unit) * unit;
+  return formatToken(roundedUp, 18, 6);
+}
+
 function formatUsd6(value) {
   return `$${formatToken(value, 6, 4)}`;
 }
@@ -472,6 +508,9 @@ function formatWalletError(error) {
     return "La comisión de red cambió antes del envío. Intentá nuevamente; la app actualizará el gas automáticamente.";
   }
   if (message.includes("Exceeds max presale per wallet")) return "La compra supera el máximo de 10.000 WKR por dirección.";
+  if (message.includes("Recipient exceeds max wallet")) {
+    return "El reclamo superaría el máximo de 10.005 WKR por wallet. Transferí algunos WKR a otra wallet e intentá nuevamente.";
+  }
   return message;
 }
 

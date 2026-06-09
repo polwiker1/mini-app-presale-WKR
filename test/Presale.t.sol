@@ -45,6 +45,14 @@ contract UnsupportedDecimalsAggregator {
     }
 }
 
+contract IncompleteRoundAggregator {
+    uint8 public constant decimals = 8;
+
+    function latestRoundData() external pure returns (uint80, int256, uint256, uint256, uint80) {
+        return (1, 3_000e8, 0, 0, 1);
+    }
+}
+
 contract PresaleTest is Test {
     Presale public presale;
     MockERC20 public saleToken;
@@ -183,6 +191,99 @@ contract PresaleTest is Test {
         );
     }
 
+    function testRevert_Deploy_WhenEndIsNotAfterStart() public {
+        uint256 start = block.timestamp + 1;
+        uint256[][3] memory phases = _buildPhases(start);
+
+        vm.expectRevert("Ending time must be greater than starting time");
+        new Presale(
+            address(saleToken),
+            address(usdt),
+            address(usdc),
+            treasury,
+            address(feed),
+            PRESALE_SUPPLY,
+            start,
+            start,
+            phases
+        );
+    }
+
+    function testRevert_Deploy_WhenPhaseArrayIsTooShort() public {
+        uint256 start = block.timestamp + 1;
+        uint256[][3] memory phases = _buildPhases(start);
+        phases[1] = new uint256[](2);
+
+        vm.expectRevert("Invalid phases");
+        new Presale(
+            address(saleToken),
+            address(usdt),
+            address(usdc),
+            treasury,
+            address(feed),
+            PRESALE_SUPPLY,
+            start,
+            start + 90 days,
+            phases
+        );
+    }
+
+    function testRevert_Deploy_WhenPhasePriceIsZero() public {
+        uint256 start = block.timestamp + 1;
+        uint256[][3] memory phases = _buildPhases(start);
+        phases[1][1] = 0;
+
+        vm.expectRevert("Invalid phase price");
+        new Presale(
+            address(saleToken),
+            address(usdt),
+            address(usdc),
+            treasury,
+            address(feed),
+            PRESALE_SUPPLY,
+            start,
+            start + 90 days,
+            phases
+        );
+    }
+
+    function testRevert_Deploy_WhenPhaseEndsAreNotIncreasing() public {
+        uint256 start = block.timestamp + 1;
+        uint256[][3] memory phases = _buildPhases(start);
+        phases[1][2] = phases[0][2];
+
+        vm.expectRevert("Invalid phase 2 end");
+        new Presale(
+            address(saleToken),
+            address(usdt),
+            address(usdc),
+            treasury,
+            address(feed),
+            PRESALE_SUPPLY,
+            start,
+            start + 90 days,
+            phases
+        );
+    }
+
+    function testRevert_Deploy_WhenDataFeedIsZero() public {
+        uint256 start = block.timestamp + 1;
+        uint256[][3] memory phases = _buildPhases(start);
+
+        vm.expectRevert("Data feed zero");
+        new Presale(
+            address(saleToken),
+            address(usdt),
+            address(usdc),
+            treasury,
+            address(0),
+            PRESALE_SUPPLY,
+            start,
+            start + 90 days,
+            phases
+        );
+    }
+
     function testMoveToPhase2ByTime() public {
         vm.warp(presale.startingTime() + 30 days + 1);
 
@@ -244,7 +345,7 @@ contract PresaleTest is Test {
         presale.buyWithStable(address(usdt), 301e6);
     }
 
-    function testTotalSoldAcrossThreePhasesCannotExceed100000Wkr() public {
+    function testSoldOutPresaleRejectsFurtherStableAndEthPurchasesWithoutMovingFunds() public {
         vm.warp(presale.startingTime() + 1);
         for (uint256 i = 0; i < 3; i++) {
             _buyTenThousandWkr(address(uint160(0x1000 + i)), 600e6);
@@ -262,12 +363,34 @@ contract PresaleTest is Test {
 
         assertEq(presale.totalSold(), PRESALE_SUPPLY);
         assertEq(saleToken.balanceOf(address(presale)), PRESALE_SUPPLY);
+        assertEq(presale.currentPhase(), 2);
 
         address extraBuyer = address(0x4000);
         _fundAndApproveUsdt(extraBuyer);
+        vm.deal(extraBuyer, 1 ether);
+
+        uint256 buyerUsdtBefore = usdt.balanceOf(extraBuyer);
+        uint256 buyerEthBefore = extraBuyer.balance;
+        uint256 treasuryUsdtBefore = usdt.balanceOf(treasury);
+        uint256 treasuryEthBefore = treasury.balance;
+        uint256 minimumEthPurchase = presale.MIN_ETH_PURCHASE();
+
         vm.prank(extraBuyer);
         vm.expectRevert("No active phase");
         presale.buyWithStable(address(usdt), 1e6);
+
+        feed.setAnswer(3_000e8);
+        vm.prank(extraBuyer);
+        vm.expectRevert("No active phase");
+        presale.buyWithEth{value: minimumEthPurchase}();
+
+        assertEq(presale.totalSold(), PRESALE_SUPPLY);
+        assertEq(presale.userTokenBalance(extraBuyer), 0);
+        assertEq(saleToken.balanceOf(address(presale)), PRESALE_SUPPLY);
+        assertEq(usdt.balanceOf(extraBuyer), buyerUsdtBefore);
+        assertEq(extraBuyer.balance, buyerEthBefore);
+        assertEq(usdt.balanceOf(treasury), treasuryUsdtBefore);
+        assertEq(treasury.balance, treasuryEthBefore);
     }
 
     function testBuyWithStable_AllowsExactOneDollarMinimum() public {
@@ -354,6 +477,19 @@ contract PresaleTest is Test {
         vm.prank(buyer);
         vm.expectRevert("Invalid token address");
         presale.buyWithStable(address(dai), 100e18);
+    }
+
+    function testRevert_BuyWithStable_WhenTokenDecimalsAreUnsupported() public {
+        MockERC20 unsupportedStable = new MockERC20("Unsupported", "BAD", 19);
+        unsupportedStable.mint(buyer, 100e19);
+        vm.prank(buyer);
+        unsupportedStable.approve(address(presale), type(uint256).max);
+        vm.store(address(presale), bytes32(uint256(2)), bytes32(uint256(uint160(address(unsupportedStable)))));
+
+        vm.warp(presale.startingTime() + 1);
+        vm.prank(buyer);
+        vm.expectRevert("Unsupported token decimals");
+        presale.buyWithStable(address(unsupportedStable), 1e19);
     }
 
     function testRevert_BuyWithStable_BeforeStart() public {
@@ -663,6 +799,18 @@ contract PresaleTest is Test {
         );
     }
 
+    function testRevert_GetEtherPrice_WhenRoundIsIncomplete() public {
+        IncompleteRoundAggregator incompleteFeed = new IncompleteRoundAggregator();
+
+        vm.expectRevert("Round not complete");
+        presale.updateDataFeed(address(incompleteFeed));
+    }
+
+    function testRevert_UpdateDataFeed_WhenAddressIsZero() public {
+        vm.expectRevert("Data feed zero");
+        presale.updateDataFeed(address(0));
+    }
+
     function testEmergencyERC20Withdraw_WorksForOwner() public {
         uint256 amount = 123e6;
         usdt.mint(address(presale), amount);
@@ -769,6 +917,57 @@ contract PresaleTest is Test {
         assertEq(wkr.balanceOf(buyer), 10_000e18);
         assertEq(wkrPresale.totalSold(), 10_000e18);
         assertEq(wkrPresale.totalClaimed(), 10_000e18);
+    }
+
+    function testRevert_WKRClaim_WhenPreviousClaimerPushesBuyerAboveWalletLimit() public {
+        WKR wkr = new WKR(owner, address(0xDAD));
+
+        uint256 start = block.timestamp + 1;
+        uint256 t1 = start + 30 days;
+        uint256 t2 = t1 + 30 days;
+        uint256 t3 = t2 + 30 days;
+
+        uint256[][3] memory phases;
+        phases[0] = new uint256[](3);
+        phases[1] = new uint256[](3);
+        phases[2] = new uint256[](3);
+        phases[0][1] = P1;
+        phases[1][1] = P2;
+        phases[2][1] = P3;
+        phases[0][2] = t1;
+        phases[1][2] = t2;
+        phases[2][2] = t3;
+
+        uint256 deployerNonce = vm.getNonce(address(this));
+        address predictedPresale = vm.computeCreateAddress(address(this), deployerNonce);
+        wkr.setPresaleExempt(predictedPresale, true);
+        wkr.approve(predictedPresale, PRESALE_SUPPLY);
+
+        Presale wkrPresale = new Presale(
+            address(wkr), address(usdt), address(usdc), treasury, address(feed), PRESALE_SUPPLY, start, t3, phases
+        );
+
+        vm.prank(buyer);
+        usdt.approve(address(wkrPresale), type(uint256).max);
+        vm.prank(buyerTwo);
+        usdt.approve(address(wkrPresale), type(uint256).max);
+
+        vm.warp(start + 1);
+        vm.prank(buyer);
+        wkrPresale.buyWithStable(address(usdt), 600e6);
+        vm.prank(buyerTwo);
+        wkrPresale.buyWithStable(address(usdt), 600e6);
+
+        vm.warp(t3 + 1);
+        vm.prank(buyer);
+        wkrPresale.claim();
+
+        vm.prank(buyer);
+        wkr.transfer(buyerTwo, 6e18);
+
+        vm.prank(buyerTwo);
+        vm.expectRevert("Recipient exceeds max wallet");
+        wkrPresale.claim();
     }
 
     function testWKRPresaleExemption_DoesNotDisableUserLimits() public {
