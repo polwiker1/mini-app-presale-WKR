@@ -73,7 +73,6 @@ const elements = {
   remainingLabel: document.querySelector("#remainingLabel"),
   reservedLabel: document.querySelector("#reservedLabel"),
   timeLabel: document.querySelector("#timeLabel"),
-  networkLabel: document.querySelector("#networkLabel"),
 };
 
 elements.connectMetaMask.addEventListener("click", () => runAction(connectMetaMask));
@@ -289,7 +288,6 @@ async function requireReady() {
 }
 
 function refreshUi() {
-  elements.networkLabel.textContent = CONFIG.chainName;
   elements.phaseLabel.textContent = formatCurrentPhase();
   elements.priceLabel.textContent = state.priceUsd6 ? `${formatUsd6(state.priceUsd6)} USDT/USDC` : "-";
   const remaining = state.maxSellingAmount > state.totalSold ? state.maxSellingAmount - state.totalSold : 0n;
@@ -365,7 +363,7 @@ function claimExcess() {
 }
 
 function formatClaimLimit() {
-  if (!state.account) return "Tu saldo actual más los WKR reservados no puede superar 10.005 WKR.";
+  if (!state.account) return "Una wallet solo puede tener hasta 10.005 WKR.";
   const excess = claimExcess();
   if (excess > 0n) return `Transferí al menos ${formatRequiredTransfer(excess)} WKR antes de reclamar.`;
   return "Tu saldo permite reclamar los WKR reservados.";
