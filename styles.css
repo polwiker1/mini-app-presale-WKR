@@ -74,21 +74,6 @@ button {
   flex: 1;
 }
 
-.target-network {
-  width: fit-content;
-  margin: 10px 0 0;
-  padding: 5px 9px;
-  color: var(--muted);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--paper);
-  font-size: 12px;
-}
-
-.target-network strong {
-  color: var(--blue);
-}
-
 .brand-mark {
   width: 52px;
   height: 52px;
@@ -413,6 +398,41 @@ select:focus {
   background: var(--blue);
 }
 
+.network-box {
+  margin-top: 16px;
+  padding: 14px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  color: white;
+  background: #213147;
+}
+
+.network-box img {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+}
+
+.network-box span,
+.network-box small {
+  display: block;
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 13px;
+}
+
+.network-box strong {
+  display: block;
+  margin-top: 2px;
+  color: #ffffff;
+  font-size: 20px;
+}
+
+.network-box small {
+  margin-top: 5px;
+  line-height: 1.35;
+}
+
 .claim-limit-box span,
 .claim-limit-box small {
   color: rgba(255, 255, 255, 0.88);
@@ -462,5 +482,9 @@ select:focus {
   .claim-box {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .network-box {
+    align-items: flex-start;
   }
 }

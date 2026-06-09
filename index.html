@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Wiker Preventa (Presale)</title>
+    <title>Preventa WKR | Wiker</title>
     <link rel="icon" href="./wkr-favicon.png" type="image/png" />
     <link rel="shortcut icon" href="./wkr-favicon.png" type="image/png" />
-    <link rel="stylesheet" href="./styles.css?v=20260609-2" />
+    <link rel="stylesheet" href="./styles.css?v=20260609-6" />
   </head>
   <body>
     <main class="page-shell">
@@ -15,24 +15,24 @@
           <div class="brand-mark" aria-hidden="true">
             <img src="./wkr-favicon.png" alt="" />
           </div>
-          <div>
+          <div class="brand-copy">
             <p class="eyebrow">Wiker</p>
-            <h1>Preventa <span>(Presale)</span> WKR</h1>
+            <h1>Preventa <span>WKR</span></h1>
           </div>
         </div>
 
         <div class="value-strip" aria-label="Contexto Wiker">
           <div>
             <strong>Mercado rural latinoamericano</strong>
-            <span>Marketplace farmers LATAM</span>
+            <span>Mercado de productores de Latinoamérica</span>
           </div>
           <div>
             <strong>Compra directa con monedas estables</strong>
-            <span>Stablecoins</span>
+            <span>USDT, USDC y ETH</span>
           </div>
           <div>
             <strong>Gobernanza Wiker</strong>
-            <span>WKR governance token</span>
+            <span>Token de gobernanza WKR</span>
           </div>
         </div>
 
@@ -52,7 +52,7 @@
             <div id="statusMessage" class="status-message">Conectá tu wallet para ver la preventa.</div>
 
             <div class="input-block">
-              <label for="paymentToken">Moneda de pago <span>Payment token</span></label>
+              <label for="paymentToken">Moneda de pago <span>Elegí cómo pagar</span></label>
               <select id="paymentToken">
                 <option value="USDT">USDT</option>
                 <option value="USDC">USDC</option>
@@ -61,7 +61,7 @@
             </div>
 
             <div class="input-block">
-              <label for="payAmount">Monto a pagar <span>Amount to pay</span></label>
+              <label for="payAmount">Monto a pagar <span>Ingresá el monto</span></label>
               <input id="payAmount" inputmode="decimal" placeholder="0.00" />
             </div>
 
@@ -104,21 +104,30 @@
             </div>
             <div class="stat">
               <span>Máximo por dirección</span>
-              <strong>10000 WKR</strong>
+              <strong>10.000 WKR</strong>
             </div>
             <div class="stat">
               <span>Estado</span>
               <strong id="timeLabel">-</strong>
             </div>
             <div class="network-box">
-              <span>Red</span>
-              <strong id="networkLabel">Arbitrum Sepolia</strong>
+              <img src="./arbitrum-logo.svg" alt="" aria-hidden="true" />
+              <div>
+                <span>Red objetivo</span>
+                <strong>Arbitrum One</strong>
+                <small>Entorno actual de prueba: Arbitrum Sepolia</small>
+              </div>
+            </div>
+            <div class="claim-limit-box">
+              <span>Límite por wallet</span>
+              <strong id="claimLimitLabel">Una wallet solo puede tener hasta 10.005 WKR.</strong>
+              <small>Si tu saldo actual más los WKR reservados supera ese límite, enviá WKR a otra wallet antes de reclamar.</small>
             </div>
           </aside>
         </div>
       </section>
     </main>
-    <script src="./config.js?v=20260609-2"></script>
-    <script type="module" src="./app.js?v=20260609-2"></script>
+    <script src="./config.js?v=20260609-6"></script>
+    <script type="module" src="./app.js?v=20260609-6"></script>
   </body>
 </html>
