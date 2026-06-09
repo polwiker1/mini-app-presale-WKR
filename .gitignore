@@ -1,0 +1,32 @@
+# Foundry build files
+cache/
+out/
+
+# Deployment artifacts remain local
+broadcast/
+
+# Internal documentation and research
+docs/
+BITACORA.md
+BITACORA_LEGAL_TECH.md
+ataque POC/
+Oracle-manipulation-multi-venue-/
+script/TestnetMaliciousProposal.s.sol
+test/MyContractOwnable.t.sol
+
+# Testnet-only deployment helpers remain internal
+src/testnet/
+test/TestnetEthUsdOracle.t.sol
+script/DeployPresaleTestnetMocks.s.sol
+script/DeployTestnetEthUsdOracle.s.sol
+script/UpdateTestnetEthUsdPrice.s.sol
+
+# Local environment and coverage
+.env
+.env.*
+!.env.example
+lcov.info
+coverage/
+
+# Local mini front runtime config
+mini-front/config.js
