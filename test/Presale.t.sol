@@ -284,6 +284,30 @@ contract PresaleTest is Test {
         );
     }
 
+    function testRevert_Deploy_WhenSaleTokenDoesNotHave18Decimals() public {
+        MockERC20 sixDecimalSaleToken = new MockERC20("Bad WKR", "BWKR", 6);
+        uint256 start = block.timestamp + 1;
+        uint256[][3] memory phases = _buildPhases(start);
+
+        sixDecimalSaleToken.mint(owner, 100_000e6);
+        uint256 deployerNonce = vm.getNonce(address(this));
+        address predictedPresale = vm.computeCreateAddress(address(this), deployerNonce);
+        sixDecimalSaleToken.approve(predictedPresale, 100_000e6);
+
+        vm.expectRevert("Sale token must have 18 decimals");
+        new Presale(
+            address(sixDecimalSaleToken),
+            address(usdt),
+            address(usdc),
+            treasury,
+            address(feed),
+            100_000e6,
+            start,
+            start + 90 days,
+            phases
+        );
+    }
+
     function testMoveToPhase2ByTime() public {
         vm.warp(presale.startingTime() + 30 days + 1);
 
@@ -322,7 +346,39 @@ contract PresaleTest is Test {
         vm.prank(buyerFour);
         presale.buyWithStable(address(usdt), 300e6);
 
-        assertEq(presale.userTokenBalance(buyerFour), 4_000e18);
+        uint256 phaseOneRemainder = presale.phases(0, 0) - 30_000e18;
+        uint256 usdUsedInPhaseOne = phaseOneRemainder * P1 / 1e6;
+        uint256 expected = phaseOneRemainder + ((300e18 - usdUsedInPhaseOne) * 1e6 / P2);
+
+        assertEq(presale.userTokenBalance(buyerFour), expected);
+        assertEq(presale.totalSold(), 30_000e18 + expected);
+        assertEq(presale.phases(0, 0) < presale.totalSold(), true);
+        assertEq(presale.currentPhase(), 1);
+    }
+
+    function testBuyWithEth_SplitsPurchaseAcrossPhaseBoundary() public {
+        vm.warp(presale.startingTime() + 1);
+
+        vm.prank(buyer);
+        presale.buyWithStable(address(usdt), 600e6);
+
+        vm.prank(buyerTwo);
+        presale.buyWithStable(address(usdt), 600e6);
+
+        vm.prank(buyerThree);
+        presale.buyWithStable(address(usdt), 600e6);
+
+        vm.deal(buyerFour, 1 ether);
+
+        vm.prank(buyerFour);
+        presale.buyWithEth{value: 0.1 ether}();
+
+        uint256 phaseOneRemainder = presale.phases(0, 0) - 30_000e18;
+        uint256 usdUsedInPhaseOne = phaseOneRemainder * P1 / 1e6;
+        uint256 expected = phaseOneRemainder + ((300e18 - usdUsedInPhaseOne) * 1e6 / P2);
+
+        assertEq(presale.userTokenBalance(buyerFour), expected);
+        assertEq(presale.totalSold(), 30_000e18 + expected);
         assertEq(presale.currentPhase(), 1);
     }
 

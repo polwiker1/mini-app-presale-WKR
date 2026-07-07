@@ -67,6 +67,7 @@ contract Presale is Ownable, Pausable, ReentrancyGuard {
         require(phases[2][2] == endingTime, "Phase 3 end mismatch");
         require(datafeedaddress != address(0), "Data feed zero");
         _getEtherPrice(datafeedaddress);
+        require(IERC20Metadata(saleTokenAddress_).decimals() == 18, "Sale token must have 18 decimals");
 
         // phases[i] = [capAcumulado, priceUsd6, endTime]
         uint256 phaseAmount = maxSellingAmount / 3;
@@ -104,6 +105,39 @@ contract Presale is Ownable, Pausable, ReentrancyGuard {
         revert("No active phase");
     }
 
+    function quoteTokenAmount(uint256 usdAmount18_) private view returns (uint256 tokenAmount, uint256 finalPhase) {
+        uint256 phase = currentPhase;
+        uint256 simulatedSold = totalSold;
+        uint256 remainingUsd18 = usdAmount18_;
+
+        while (remainingUsd18 > 0) {
+            while (phase < 3 && (simulatedSold >= phases[phase][0] || block.timestamp > phases[phase][2])) {
+                phase++;
+            }
+
+            require(phase < 3, "No active phase");
+
+            uint256 phaseCap = phases[phase][0];
+            uint256 availableInPhase = phaseCap - simulatedSold;
+            uint256 phasePriceUsd6 = phases[phase][1];
+            uint256 tokensAtPhasePrice = remainingUsd18 * 1e6 / phasePriceUsd6;
+
+            require(tokensAtPhasePrice > 0, "Payment too small for active phase");
+
+            if (tokensAtPhasePrice <= availableInPhase) {
+                tokenAmount += tokensAtPhasePrice;
+                simulatedSold += tokensAtPhasePrice;
+                remainingUsd18 = 0;
+            } else {
+                tokenAmount += availableInPhase;
+                simulatedSold += availableInPhase;
+                remainingUsd18 -= availableInPhase * phasePriceUsd6 / 1e6;
+            }
+        }
+
+        finalPhase = phase;
+    }
+
     function buyWithStable(address tokenUsedToBuy_, uint256 amount_) external whenNotPaused {
         require(!isBlackListed[msg.sender], "You are blacklisted");
         require(block.timestamp > startingTime, "Presale has not started yet");
@@ -112,21 +146,12 @@ contract Presale is Ownable, Pausable, ReentrancyGuard {
 
         checksCurrentPhase(0);
 
-        uint256 phaseAtPricing = currentPhase;
-        uint256 phasePriceUsd6 = phases[phaseAtPricing][1];
         uint8 stableDecimals = IERC20Metadata(tokenUsedToBuy_).decimals();
         require(stableDecimals <= 18, "Unsupported token decimals");
 
         uint256 stableAmount18 = amount_ * (10 ** (18 - stableDecimals));
         require(stableAmount18 >= MIN_STABLE_PURCHASE_USD18, "Stable amount below minimum");
-        uint256 tokenAmountToReceive = stableAmount18 * 1e6 / phasePriceUsd6;
-
-        checksCurrentPhase(tokenAmountToReceive);
-        if (currentPhase != phaseAtPricing) {
-            phasePriceUsd6 = phases[currentPhase][1];
-            tokenAmountToReceive = stableAmount18 * 1e6 / phasePriceUsd6;
-            checksCurrentPhase(tokenAmountToReceive);
-        }
+        (uint256 tokenAmountToReceive, uint256 finalPhase) = quoteTokenAmount(stableAmount18);
 
         require(
             userTokenBalance[msg.sender] + tokenAmountToReceive <= MAX_TOKENS_PER_WALLET,
@@ -136,6 +161,7 @@ contract Presale is Ownable, Pausable, ReentrancyGuard {
         require(totalSold <= maxSellingAmount, "Exceeds maximum selling amount");
 
         userTokenBalance[msg.sender] += tokenAmountToReceive;
+        currentPhase = finalPhase;
         IERC20(tokenUsedToBuy_).safeTransferFrom(msg.sender, fundsReceiverAddress, amount_);
 
         emit TokenBuy(msg.sender, amount_);
@@ -147,19 +173,10 @@ contract Presale is Ownable, Pausable, ReentrancyGuard {
         require(block.timestamp <= endingTime, "Presale has ended");
         require(msg.value >= MIN_ETH_PURCHASE, "ETH amount below minimum");
 
+        uint256 usdValue = (msg.value * getEtherPrice()) / 1e18;
         checksCurrentPhase(0);
 
-        uint256 usdValue = (msg.value * getEtherPrice()) / 1e18;
-        uint256 phaseAtPricing = currentPhase;
-        uint256 phasePriceUsd6 = phases[phaseAtPricing][1];
-        uint256 tokenAmountToReceive = usdValue * 1e6 / phasePriceUsd6;
-
-        checksCurrentPhase(tokenAmountToReceive);
-        if (currentPhase != phaseAtPricing) {
-            phasePriceUsd6 = phases[currentPhase][1];
-            tokenAmountToReceive = usdValue * 1e6 / phasePriceUsd6;
-            checksCurrentPhase(tokenAmountToReceive);
-        }
+        (uint256 tokenAmountToReceive, uint256 finalPhase) = quoteTokenAmount(usdValue);
 
         require(
             userTokenBalance[msg.sender] + tokenAmountToReceive <= MAX_TOKENS_PER_WALLET,
@@ -167,6 +184,7 @@ contract Presale is Ownable, Pausable, ReentrancyGuard {
         );
         totalSold += tokenAmountToReceive;
         userTokenBalance[msg.sender] += tokenAmountToReceive;
+        currentPhase = finalPhase;
 
         (bool success,) = fundsReceiverAddress.call{value: msg.value}("");
         require(success, "Transfer failed.");
@@ -211,6 +229,10 @@ contract Presale is Ownable, Pausable, ReentrancyGuard {
         return uint256(price) * (10 ** (18 - feedDecimals));
     }
 
+    /**
+     * @dev El owner puede recuperar remanentes no vendidos, incluido polvo final que no pueda comprarse por minimos
+     *      de compra o por redondeos, y enviarlos a tesoreria. Los tokens reservados para compradores quedan protegidos.
+     */
     function emergencyERC20Withdraw(address tokenAddress_, uint256 amount_) external onlyOwner {
         if (tokenAddress_ == saleTokenAddress) {
             uint256 reservedForBuyers = totalSold - totalClaimed;
