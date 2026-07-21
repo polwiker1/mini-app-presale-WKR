@@ -118,7 +118,17 @@ contract PresaleTest is Test {
         address predictedPresale = vm.computeCreateAddress(address(this), deployerNonce);
         saleToken.approve(predictedPresale, PRESALE_SUPPLY);
         presale = new Presale(
-            address(saleToken), address(usdt), address(usdc), treasury, address(feed), PRESALE_SUPPLY, start, t3, phases
+            address(saleToken),
+            address(usdt),
+            address(usdc),
+            treasury,
+            address(feed),
+            PRESALE_SUPPLY,
+            start,
+            t3,
+            phases,
+            owner,
+            owner
         );
 
         vm.prank(buyer);
@@ -187,7 +197,9 @@ contract PresaleTest is Test {
             PRESALE_SUPPLY,
             start,
             start + 90 days + 1,
-            phases
+            phases,
+            owner,
+            owner
         );
     }
 
@@ -205,7 +217,9 @@ contract PresaleTest is Test {
             PRESALE_SUPPLY,
             start,
             start,
-            phases
+            phases,
+            owner,
+            owner
         );
     }
 
@@ -224,7 +238,9 @@ contract PresaleTest is Test {
             PRESALE_SUPPLY,
             start,
             start + 90 days,
-            phases
+            phases,
+            owner,
+            owner
         );
     }
 
@@ -243,7 +259,9 @@ contract PresaleTest is Test {
             PRESALE_SUPPLY,
             start,
             start + 90 days,
-            phases
+            phases,
+            owner,
+            owner
         );
     }
 
@@ -262,7 +280,9 @@ contract PresaleTest is Test {
             PRESALE_SUPPLY,
             start,
             start + 90 days,
-            phases
+            phases,
+            owner,
+            owner
         );
     }
 
@@ -280,7 +300,9 @@ contract PresaleTest is Test {
             PRESALE_SUPPLY,
             start,
             start + 90 days,
-            phases
+            phases,
+            owner,
+            owner
         );
     }
 
@@ -304,7 +326,9 @@ contract PresaleTest is Test {
             100_000e6,
             start,
             start + 90 days,
-            phases
+            phases,
+            owner,
+            owner
         );
     }
 
@@ -724,7 +748,9 @@ contract PresaleTest is Test {
             PRESALE_SUPPLY,
             start,
             t3,
-            phases
+            phases,
+            owner,
+            owner
         );
 
         vm.warp(start + 1);
@@ -765,7 +791,9 @@ contract PresaleTest is Test {
             PRESALE_SUPPLY,
             start,
             t3,
-            phases
+            phases,
+            owner,
+            owner
         );
         receiver.setPresale(localPresale);
 
@@ -851,7 +879,9 @@ contract PresaleTest is Test {
             PRESALE_SUPPLY,
             start,
             t3,
-            phases
+            phases,
+            owner,
+            owner
         );
     }
 
@@ -927,7 +957,17 @@ contract PresaleTest is Test {
 
         vm.expectRevert("Transfer exceeds max tx");
         new Presale(
-            address(wkr), address(usdt), address(usdc), treasury, address(feed), PRESALE_SUPPLY, start, t3, phases
+            address(wkr),
+            address(usdt),
+            address(usdc),
+            treasury,
+            address(feed),
+            PRESALE_SUPPLY,
+            start,
+            t3,
+            phases,
+            owner,
+            owner
         );
     }
 
@@ -956,7 +996,17 @@ contract PresaleTest is Test {
         wkr.approve(predictedPresale, PRESALE_SUPPLY);
 
         Presale wkrPresale = new Presale(
-            address(wkr), address(usdt), address(usdc), treasury, address(feed), PRESALE_SUPPLY, start, t3, phases
+            address(wkr),
+            address(usdt),
+            address(usdc),
+            treasury,
+            address(feed),
+            PRESALE_SUPPLY,
+            start,
+            t3,
+            phases,
+            owner,
+            owner
         );
 
         vm.prank(buyer);
@@ -973,6 +1023,58 @@ contract PresaleTest is Test {
         assertEq(wkr.balanceOf(buyer), 10_000e18);
         assertEq(wkrPresale.totalSold(), 10_000e18);
         assertEq(wkrPresale.totalClaimed(), 10_000e18);
+    }
+
+    function testWKRPresaleDeploy_WhenSafeOwnsAndFundsPresale() public {
+        address safe = address(0x5AFE);
+        address timelock = address(0xDAD);
+        WKR wkr = new WKR(safe, timelock);
+
+        uint256 start = block.timestamp + 1;
+        uint256 t3 = start + 90 days;
+        uint256[][3] memory phases = _buildPhases(start);
+
+        uint256 deployerNonce = vm.getNonce(address(this));
+        address predictedPresale = vm.computeCreateAddress(address(this), deployerNonce);
+
+        vm.prank(safe);
+        wkr.setPresaleExempt(predictedPresale, true);
+
+        vm.prank(safe);
+        wkr.approve(predictedPresale, PRESALE_SUPPLY);
+
+        Presale wkrPresale = new Presale(
+            address(wkr),
+            address(usdt),
+            address(usdc),
+            treasury,
+            address(feed),
+            PRESALE_SUPPLY,
+            start,
+            t3,
+            phases,
+            safe,
+            safe
+        );
+
+        assertEq(wkrPresale.owner(), safe);
+        assertEq(wkr.balanceOf(address(wkrPresale)), PRESALE_SUPPLY);
+        assertEq(wkr.balanceOf(safe), wkr.INITIAL_SUPPLY() - PRESALE_SUPPLY);
+
+        vm.expectRevert();
+        wkrPresale.pause();
+
+        vm.prank(safe);
+        wkrPresale.pause();
+        assertTrue(wkrPresale.paused());
+
+        vm.prank(safe);
+        wkrPresale.transferOwnership(timelock);
+        assertEq(wkrPresale.owner(), timelock);
+
+        vm.prank(timelock);
+        wkrPresale.unpause();
+        assertFalse(wkrPresale.paused());
     }
 
     function testRevert_WKRClaim_WhenPreviousClaimerPushesBuyerAboveWalletLimit() public {
@@ -1000,7 +1102,17 @@ contract PresaleTest is Test {
         wkr.approve(predictedPresale, PRESALE_SUPPLY);
 
         Presale wkrPresale = new Presale(
-            address(wkr), address(usdt), address(usdc), treasury, address(feed), PRESALE_SUPPLY, start, t3, phases
+            address(wkr),
+            address(usdt),
+            address(usdc),
+            treasury,
+            address(feed),
+            PRESALE_SUPPLY,
+            start,
+            t3,
+            phases,
+            owner,
+            owner
         );
 
         vm.prank(buyer);

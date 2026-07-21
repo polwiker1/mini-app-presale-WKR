@@ -58,7 +58,9 @@ contract PresaleForkTest is Test {
             maxSellingAmount,
             start,
             t3,
-            phases
+            phases,
+            address(this),
+            address(this)
         );
 
         uint256 price = presale.getEtherPrice();
@@ -104,7 +106,9 @@ contract PresaleForkTest is Test {
             maxSellingAmount,
             start,
             t3,
-            phases
+            phases,
+            address(this),
+            address(this)
         );
 
         address buyer = address(0xBEEF);
@@ -156,7 +160,9 @@ contract PresaleForkTest is Test {
             maxSellingAmount,
             start,
             t3,
-            phases
+            phases,
+            address(this),
+            address(this)
         );
 
         presale.pause();

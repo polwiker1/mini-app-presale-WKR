@@ -10,7 +10,7 @@ import {WKR} from "../src/WKR.sol";
  * @notice Deploy y fondeo de preventa (presale) WKR.
  * @dev
  * Variables de entorno esperadas:
- * - PRIVATE_KEY                  -> owner actual de WKR, multisig/deployer fundacional
+ * - PRIVATE_KEY                  -> deployer tecnico
  * - WKR_ADDRESS                  -> token WKR ya desplegado
  * - USDT_ADDRESS                 -> stablecoin USDT para testnet/mainnet
  * - USDC_ADDRESS                 -> stablecoin USDC para testnet/mainnet
@@ -19,8 +19,11 @@ import {WKR} from "../src/WKR.sol";
  *
  * Variables opcionales:
  * - PRESALE_SUPPLY_TOKENS        -> default 100000
+ * - PRESALE_START_TIMESTAMP      -> unix timestamp absoluto de inicio; si se omite usa delay
  * - PRESALE_START_DELAY_SECONDS  -> default 3600
  * - PRESALE_PHASE_DURATION       -> default 2592000 (30 dias)
+ * - PRESALE_OWNER                -> owner administrativo de Presale, default deployer
+ * - SALE_TOKEN_OWNER             -> wallet que aporta los WKR, default deployer
  */
 contract DeployWKRPresale is Script {
     uint256 internal constant DEFAULT_PRESALE_SUPPLY_TOKENS = 100_000;
@@ -40,8 +43,11 @@ contract DeployWKRPresale is Script {
         address usdc = vm.envAddress("USDC_ADDRESS");
         address ethUsdFeed = vm.envAddress("ETH_USD_FEED");
         address fundsReceiver = vm.envAddress("FUNDS_RECEIVER");
+        address presaleOwner = vm.envOr("PRESALE_OWNER", deployer);
+        address saleTokenOwner = vm.envOr("SALE_TOKEN_OWNER", deployer);
 
         uint256 presaleSupplyTokens = vm.envOr("PRESALE_SUPPLY_TOKENS", DEFAULT_PRESALE_SUPPLY_TOKENS);
+        uint256 startTimestamp = vm.envOr("PRESALE_START_TIMESTAMP", uint256(0));
         uint256 startDelay = vm.envOr("PRESALE_START_DELAY_SECONDS", DEFAULT_START_DELAY_SECONDS);
         uint256 phaseDuration = vm.envOr("PRESALE_PHASE_DURATION", DEFAULT_PHASE_DURATION);
 
@@ -49,11 +55,12 @@ contract DeployWKRPresale is Script {
         require(usdt != address(0), "USDT_ADDRESS zero");
         require(usdc != address(0), "USDC_ADDRESS zero");
         require(ethUsdFeed != address(0), "ETH_USD_FEED zero");
+        require(presaleOwner != address(0), "PRESALE_OWNER zero");
+        require(saleTokenOwner != address(0), "SALE_TOKEN_OWNER zero");
         require(presaleSupplyTokens == DEFAULT_PRESALE_SUPPLY_TOKENS, "Presale supply must be 100000 WKR");
-        require(wkr.owner() == deployer, "Deployer must be WKR owner");
-        require(wkr.balanceOf(deployer) >= presaleSupplyTokens * 1e18, "Insufficient WKR balance");
 
-        uint256 start = block.timestamp + startDelay;
+        uint256 start = startTimestamp == 0 ? block.timestamp + startDelay : startTimestamp;
+        require(start > block.timestamp, "Presale start must be future");
         uint256 phase1End = start + phaseDuration;
         uint256 phase2End = phase1End + phaseDuration;
         uint256 phase3End = phase2End + phaseDuration;
@@ -61,15 +68,37 @@ contract DeployWKRPresale is Script {
 
         uint256[][3] memory phases = _buildPhases(phase1End, phase2End, phase3End);
 
-        uint256 presaleNonce = vm.getNonce(deployer) + 2;
+        bool deployerCanPrepareWkr = wkr.owner() == deployer && saleTokenOwner == deployer;
+        uint256 presaleNonce = vm.getNonce(deployer) + (deployerCanPrepareWkr ? 2 : 0);
         address predictedPresale = vm.computeCreateAddress(deployer, presaleNonce);
+
+        require(wkr.balanceOf(saleTokenOwner) >= maxSellingAmount, "Insufficient WKR balance");
+
+        if (!deployerCanPrepareWkr) {
+            require(wkr.isPresaleExempt(predictedPresale), "Presale must be WKR exempt");
+            require(wkr.allowance(saleTokenOwner, predictedPresale) >= maxSellingAmount, "Presale allowance missing");
+        }
 
         vm.startBroadcast(deployerPk);
 
-        wkr.setPresaleExempt(predictedPresale, true);
-        wkr.approve(predictedPresale, maxSellingAmount);
+        if (deployerCanPrepareWkr) {
+            wkr.setPresaleExempt(predictedPresale, true);
+            wkr.approve(predictedPresale, maxSellingAmount);
+        }
 
-        new Presale(address(wkr), usdt, usdc, fundsReceiver, ethUsdFeed, maxSellingAmount, start, phase3End, phases);
+        new Presale(
+            address(wkr),
+            usdt,
+            usdc,
+            fundsReceiver,
+            ethUsdFeed,
+            maxSellingAmount,
+            start,
+            phase3End,
+            phases,
+            presaleOwner,
+            saleTokenOwner
+        );
 
         vm.stopBroadcast();
     }

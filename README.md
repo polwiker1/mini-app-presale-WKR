@@ -5,8 +5,26 @@ Contratos, scripts, pruebas y mini dApp para la preventa del token de gobernanza
 El protocolo está diseñado para desplegar una preventa de `100,000 WKR` dividida en tres fases, aceptar pagos con
 USDT, USDC y ETH, reservar los tokens comprados y habilitar su reclamo al finalizar la venta.
 
-> Estado: validado en Arbitrum Sepolia. Antes de utilizarlo en mainnet requiere revisión independiente, configuración
-> definitiva y simulación contra un fork de Arbitrum One.
+> Estado: desplegado en Arbitrum One mainnet. Pendiente: verificación pública en Arbiscan, repasada final de UX/legal
+> y preparación operativa de liquidez `WKR/USDC`.
+
+## Deploy Arbitrum One
+
+| Componente | Address |
+| --- | --- |
+| Safe owner / treasury | `0xaA12F41aA983AF84306C443BfB5Ba7a12a3cfdE4` |
+| WKR | `0xa9Fe1b986d1352955a6d80b6568Cf4d62E9912CB` |
+| Presale | `0xec71bbc7fdd7a39766ea9a80974d4c52498d5de4` |
+| TimelockController | `0x85e37E240056D4a3245ECD326Cc02d2A740e0AA2` |
+| WKRGovernor | `0x094d06e9ac565d7549300bf6558f61645c3922d1` |
+| Chainlink ETH/USD | `0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612` |
+| USDC | `0xaf88d065e77c8cC2239327C5EDb3A432268e5831` |
+| USDT / USDt0 | `0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9` |
+
+Cronograma productivo:
+
+- Inicio preventa: `2026-08-10 09:00:00` Buenos Aires (`2026-08-10T12:00:00Z`)
+- Cierre temporal: `2026-11-08 09:00:00` Buenos Aires (`2026-11-08T12:00:00Z`)
 
 ## Parámetros WKR
 
@@ -105,6 +123,22 @@ Transmitir solamente después de validar owner, balances, direcciones oficiales,
 ```bash
 forge script script/DeployWKRPresale.s.sol:DeployWKRPresale --rpc-url "$RPC_URL" --broadcast
 ```
+
+Para producción, `PRESALE_OWNER` y `SALE_TOKEN_OWNER` pueden apuntar a una Safe. En ese flujo la Safe prepara
+`setPresaleExempt` y `approve` sobre la dirección predicha de la Presale, y una EOA técnica solo ejecuta el deploy.
+La Presale queda administrada por la Safe y los `100,000 WKR` salen de la Safe.
+
+Para una fecha publica fija de inicio, configurar `PRESALE_START_TIMESTAMP`. Si se usa el valor operativo previsto
+del 10 de agosto de 2026 y fases de 30 dias, el cierre temporal ocurre 90 dias despues, el 8 de noviembre de 2026
+a la misma hora de inicio.
+
+Parámetros de gobernanza previstos para producción:
+
+- `PROPOSAL_THRESHOLD_TOKENS=10000`
+- `QUORUM_PERCENT=10`
+- `VOTING_DELAY_BLOCKS=2419200` (~7 días en Arbitrum)
+- `VOTING_PERIOD_BLOCKS=4838400` (~14 días en Arbitrum)
+- `MIN_DELAY_SECONDS=172800` (2 días)
 
 ## Checklist Antes de Mainnet
 

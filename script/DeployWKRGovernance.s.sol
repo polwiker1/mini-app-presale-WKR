@@ -14,18 +14,18 @@ import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
  * Variables de entorno esperadas:
  * - PRIVATE_KEY                -> deployer
  * - MULTISIG_OWNER             -> multisig que recibe 1,000,000 WKR y queda owner inicial de WKR
- * - MIN_DELAY_SECONDS          -> delay del timelock (ej 86400 = 1 dia)
+ * - MIN_DELAY_SECONDS          -> delay del timelock (ej 172800 = 2 dias)
  * - VOTING_DELAY_BLOCKS        -> delay de votacion en bloques
  * - VOTING_PERIOD_BLOCKS       -> periodo de votacion en bloques
  * - PROPOSAL_THRESHOLD_TOKENS  -> threshold (sin decimales, se multiplica por 1e18)
- * - QUORUM_PERCENT             -> quorum % (ej 25 = 25%)
+ * - QUORUM_PERCENT             -> quorum % (ej 10 = 10%)
  * - TRANSFER_WKR_TO_TIMELOCK   -> true para iniciar handover (pendingOwner=timelock). Requiere acceptOwnership posterior.
  */
 contract DeployWKRGovernance is Script {
-    uint256 internal constant MIN_TIMELOCK_DELAY_SECONDS = 1 days;
-    uint256 internal constant MIN_VOTING_DELAY_BLOCKS = 3_456_000; // ~10 days at 0.25s/block
-    uint256 internal constant MIN_VOTING_PERIOD_BLOCKS = 2_419_200; // ~7 days at 0.25s/block
-    uint256 internal constant REQUIRED_QUORUM_PERCENT = 25;
+    uint256 internal constant MIN_TIMELOCK_DELAY_SECONDS = 2 days;
+    uint256 internal constant MIN_VOTING_DELAY_BLOCKS = 2_419_200; // ~7 days at 0.25s/block
+    uint256 internal constant MIN_VOTING_PERIOD_BLOCKS = 4_838_400; // ~14 days at 0.25s/block
+    uint256 internal constant REQUIRED_QUORUM_PERCENT = 10;
 
     function run() external {
         uint256 deployerPk = vm.envUint("PRIVATE_KEY");
@@ -42,10 +42,10 @@ contract DeployWKRGovernance is Script {
 
         require(proposalThresholdTokens == 10_000, "PROPOSAL_THRESHOLD_TOKENS must be 10000");
         if (strictGovGuardrails) {
-            require(quorumPercent == REQUIRED_QUORUM_PERCENT, "QUORUM_PERCENT must be 25");
-            require(minDelaySeconds >= MIN_TIMELOCK_DELAY_SECONDS, "MIN_DELAY_SECONDS must be >= 1 day");
-            require(votingDelayBlocks >= MIN_VOTING_DELAY_BLOCKS, "VOTING_DELAY_BLOCKS must be >= 10 days");
-            require(votingPeriodBlocks >= MIN_VOTING_PERIOD_BLOCKS, "VOTING_PERIOD_BLOCKS must be >= 7 days");
+            require(quorumPercent == REQUIRED_QUORUM_PERCENT, "QUORUM_PERCENT must be 10");
+            require(minDelaySeconds >= MIN_TIMELOCK_DELAY_SECONDS, "MIN_DELAY_SECONDS must be >= 2 days");
+            require(votingDelayBlocks >= MIN_VOTING_DELAY_BLOCKS, "VOTING_DELAY_BLOCKS must be >= 7 days");
+            require(votingPeriodBlocks >= MIN_VOTING_PERIOD_BLOCKS, "VOTING_PERIOD_BLOCKS must be >= 14 days");
         } else {
             require(quorumPercent > 0 && quorumPercent <= 100, "QUORUM_PERCENT out of range");
             require(minDelaySeconds > 0, "MIN_DELAY_SECONDS must be > 0");

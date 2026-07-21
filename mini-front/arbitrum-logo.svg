@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Arbitrum</title>
+  <path fill="#213147" d="M32 3 57 17.5v29L32 61 7 46.5v-29Z"/>
+  <path fill="#ffffff" d="m32 8.8 19.9 11.5v23L32 54.8 12.1 43.3v-23Z"/>
+  <path fill="#213147" d="m32 12.9 16.3 9.4v18.8L32 50.5l-16.3-9.4V22.3Z"/>
+  <path fill="#12aaff" d="m24.3 42.4-5.1-3 12-20.8h6.9Z"/>
+  <path fill="#28a0f0" d="m32.4 47.1-5.2-3 14.8-25.5 5 2.9Z"/>
+  <path fill="#9dcced" d="m39.2 43.2-3.5-6 5.3-9.1 5.2 9Z"/>
+</svg>

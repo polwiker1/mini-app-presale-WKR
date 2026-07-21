@@ -46,8 +46,10 @@ contract Presale is Ownable, Pausable, ReentrancyGuard {
         uint256 maxSellingAmount_,
         uint256 startingTime_,
         uint256 endingTime_,
-        uint256[][3] memory phases_
-    ) Ownable(msg.sender) {
+        uint256[][3] memory phases_,
+        address presaleOwner_,
+        address saleTokenOwner_
+    ) Ownable(presaleOwner_) {
         saleTokenAddress = saleTokenAddress_;
         usdtAddress = usdtAddress_;
         usdcAddress = usdcAddress_;
@@ -66,6 +68,7 @@ contract Presale is Ownable, Pausable, ReentrancyGuard {
         require(phases[2][2] > phases[1][2], "Invalid phase 3 end");
         require(phases[2][2] == endingTime, "Phase 3 end mismatch");
         require(datafeedaddress != address(0), "Data feed zero");
+        require(saleTokenOwner_ != address(0), "Sale token owner zero");
         _getEtherPrice(datafeedaddress);
         require(IERC20Metadata(saleTokenAddress_).decimals() == 18, "Sale token must have 18 decimals");
 
@@ -79,7 +82,7 @@ contract Presale is Ownable, Pausable, ReentrancyGuard {
         phases[1][0] = cap1;
         phases[2][0] = cap2;
 
-        IERC20(saleTokenAddress).safeTransferFrom(msg.sender, address(this), maxSellingAmount);
+        IERC20(saleTokenAddress).safeTransferFrom(saleTokenOwner_, address(this), maxSellingAmount);
     }
 
     function blackList(address user_) external onlyOwner {

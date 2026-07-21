@@ -22,11 +22,11 @@ Variables principales:
 ```bash
 PRIVATE_KEY=
 MULTISIG_OWNER=
-MIN_DELAY_SECONDS=
-VOTING_DELAY_BLOCKS=
-VOTING_PERIOD_BLOCKS=
+MIN_DELAY_SECONDS=172800
+VOTING_DELAY_BLOCKS=2419200
+VOTING_PERIOD_BLOCKS=4838400
 PROPOSAL_THRESHOLD_TOKENS=10000
-QUORUM_PERCENT=25
+QUORUM_PERCENT=10
 ```
 
 Simulación:
@@ -46,9 +46,9 @@ script/DeployWKRPresale.s.sol
 El script:
 
 1. Predice la dirección de Presale.
-2. Autoriza esa dirección en WKR mediante `setPresaleExempt`.
-3. Aprueba y deposita `100,000 WKR`.
-4. Despliega la preventa con tres fases.
+2. Si el deployer es owner de WKR, autoriza esa dirección mediante `setPresaleExempt` y aprueba `100,000 WKR`.
+3. Si WKR está en multisig/Safe, valida que la Safe ya haya autorizado y aprobado la dirección predicha.
+4. Despliega la preventa con tres fases, owner administrativo y wallet fondeadora configurables.
 
 Variables requeridas:
 
@@ -66,9 +66,25 @@ Variables opcionales:
 
 ```bash
 PRESALE_SUPPLY_TOKENS=100000
+PRESALE_START_TIMESTAMP=
 PRESALE_START_DELAY_SECONDS=3600
 PRESALE_PHASE_DURATION=2592000
+PRESALE_OWNER=
+SALE_TOKEN_OWNER=
 ```
+
+Para una fecha publica fija, usar `PRESALE_START_TIMESTAMP` con Unix timestamp. Si se deja sin configurar, el
+script usa `PRESALE_START_DELAY_SECONDS` y calcula el inicio relativo al bloque del deploy. Con
+`PRESALE_PHASE_DURATION=2592000`, la preventa dura 3 fases de 30 dias: 90 dias en total.
+
+Para mainnet con Safe:
+
+- `PRESALE_OWNER` debe ser la Safe que administrará pausa, oráculo y retiros de remanentes.
+- `SALE_TOKEN_OWNER` debe ser la Safe que mantiene los `100,000 WKR`.
+- Antes del deploy final, la Safe debe ejecutar:
+  - `WKR.setPresaleExempt(predictedPresale, true)`.
+  - `WKR.approve(predictedPresale, 100000e18)`.
+- Luego el deployer técnico puede desplegar `Presale`; los WKR se transfieren desde la Safe y el owner de `Presale` queda en la Safe.
 
 Simulación:
 
