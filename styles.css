@@ -1,16 +1,17 @@
 :root {
   color-scheme: light;
-  --ink: #17201b;
-  --muted: #66736c;
-  --line: #d8dfda;
-  --paper: #fbfbf7;
+  --ink: #111827;
+  --muted: #64748b;
+  --line: #d7e0ec;
+  --paper: #f7faff;
   --panel: #ffffff;
-  --field: #f3f6f2;
-  --green: #1f7a4a;
-  --green-dark: #155d38;
-  --blue: #245b8f;
-  --gold: #b8872d;
-  --danger: #b64242;
+  --field: #f1f6fb;
+  --blue: #213147;
+  --blue-strong: #1b4add;
+  --cyan: #28a0f0;
+  --cyan-soft: #e8f6ff;
+  --slate: #0f172a;
+  --danger: #b42318;
 }
 
 * {
@@ -25,8 +26,8 @@ body {
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
   background:
-    linear-gradient(rgba(251, 251, 247, 0.9), rgba(251, 251, 247, 0.96)),
-    url("https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1800&q=80");
+    radial-gradient(circle at top left, rgba(40, 160, 240, 0.24), transparent 34%),
+    linear-gradient(135deg, #07111f 0%, #162234 46%, #eef6ff 46%, #f8fbff 100%);
   background-position: center;
   background-size: cover;
 }
@@ -51,9 +52,10 @@ button {
 .hero-panel {
   width: min(1180px, 100%);
   padding: 28px;
-  border: 1px solid rgba(23, 32, 27, 0.12);
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 24px 60px rgba(23, 32, 27, 0.12);
+  border: 1px solid rgba(215, 224, 236, 0.82);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 28px 80px rgba(8, 18, 32, 0.24);
 }
 
 .brand-row,
@@ -74,29 +76,16 @@ button {
   flex: 1;
 }
 
-.target-network {
-  width: fit-content;
-  margin: 10px 0 0;
-  padding: 5px 9px;
-  color: var(--muted);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--paper);
-  font-size: 12px;
-}
-
-.target-network strong {
-  color: var(--blue);
-}
-
 .brand-mark {
   width: 52px;
   height: 52px;
   display: grid;
   place-items: center;
   overflow: hidden;
-  background: #050505;
-  border-radius: 8px;
+  background: var(--slate);
+  border: 1px solid rgba(40, 160, 240, 0.32);
+  border-radius: 14px;
+  box-shadow: 0 12px 30px rgba(33, 49, 71, 0.28);
 }
 
 .brand-mark img {
@@ -107,15 +96,10 @@ button {
 
 .eyebrow {
   margin: 0 0 4px;
-  color: #2f2410;
+  color: var(--cyan);
   font-size: 12.6px;
   font-weight: 800;
   letter-spacing: 0;
-  text-shadow:
-    -0.5px -0.5px 0 var(--gold),
-    0.5px -0.5px 0 var(--gold),
-    -0.5px 0.5px 0 var(--gold),
-    0.5px 0.5px 0 var(--gold);
   text-transform: uppercase;
 }
 
@@ -128,10 +112,28 @@ h2 {
 h1 {
   font-size: clamp(32px, 5vw, 62px);
   line-height: 0.98;
+  color: var(--slate);
 }
 
 h1 span {
-  color: var(--blue);
+  color: var(--blue-strong);
+}
+
+.network-pills {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.network-pills span {
+  padding: 7px 10px;
+  color: #0d3f66;
+  border: 1px solid rgba(40, 160, 240, 0.32);
+  border-radius: 999px;
+  background: var(--cyan-soft);
+  font-size: 13px;
+  font-weight: 750;
 }
 
 h2 {
@@ -148,7 +150,8 @@ h2 {
   min-width: 0;
   padding: 14px 16px;
   border: 1px solid var(--line);
-  background: var(--paper);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffffff, var(--paper));
 }
 
 .value-strip strong,
@@ -174,7 +177,9 @@ h2 {
 .buy-card,
 .stats-card {
   border: 1px solid var(--line);
+  border-radius: 16px;
   background: var(--panel);
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
 }
 
 .buy-card {
@@ -220,27 +225,27 @@ h2 {
 .primary,
 .primary-action {
   color: white;
-  background: var(--green);
+  background: linear-gradient(135deg, var(--blue-strong), var(--cyan));
 }
 
 .primary:hover,
 .primary-action:hover {
-  background: var(--green-dark);
-  box-shadow: 0 8px 18px rgba(21, 93, 56, 0.22);
+  background: linear-gradient(135deg, #173ec0, #178dd7);
+  box-shadow: 0 10px 24px rgba(27, 74, 221, 0.24);
 }
 
 .secondary,
 .secondary-action {
-  color: var(--green-dark);
+  color: var(--blue-strong);
   border-color: var(--line);
   background: white;
 }
 
 .secondary:hover,
 .secondary-action:hover {
-  border-color: rgba(31, 122, 74, 0.45);
-  background: rgba(31, 122, 74, 0.08);
-  box-shadow: 0 8px 18px rgba(23, 32, 27, 0.08);
+  border-color: rgba(40, 160, 240, 0.5);
+  background: var(--cyan-soft);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
 }
 
 .claim-action {
@@ -251,7 +256,7 @@ h2 {
 }
 
 .claim-action:hover {
-  background: #1c4872;
+  background: #17263b;
   box-shadow: 0 8px 18px rgba(36, 91, 143, 0.22);
 }
 
@@ -268,7 +273,7 @@ h2 {
 
 .icon-button:focus-visible,
 .action-button:focus-visible {
-  outline: 3px solid rgba(31, 122, 74, 0.24);
+  outline: 3px solid rgba(40, 160, 240, 0.28);
   outline-offset: 2px;
 }
 
@@ -297,9 +302,9 @@ h2 {
 }
 
 .status-message.ok {
-  color: var(--green-dark);
-  border-color: rgba(31, 122, 74, 0.35);
-  background: rgba(31, 122, 74, 0.08);
+  color: #0d3f66;
+  border-color: rgba(40, 160, 240, 0.4);
+  background: var(--cyan-soft);
 }
 
 .input-block {
@@ -326,21 +331,29 @@ select {
   padding: 0 14px;
   color: var(--ink);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 10px;
   background: white;
 }
 
 input:focus,
 select:focus {
-  outline: 2px solid rgba(31, 122, 74, 0.22);
-  border-color: var(--green);
+  outline: 2px solid rgba(40, 160, 240, 0.24);
+  border-color: var(--cyan);
+}
+
+.field-note {
+  margin: 8px 0 0;
+  color: #31546f;
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .quote-box {
   margin-top: 16px;
   padding: 16px;
-  border: 1px solid rgba(184, 135, 45, 0.35);
-  background: rgba(184, 135, 45, 0.08);
+  border: 1px solid rgba(40, 160, 240, 0.28);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f8fcff, var(--cyan-soft));
 }
 
 .claim-box {
@@ -351,6 +364,7 @@ select:focus {
   align-items: center;
   justify-content: space-between;
   border: 1px solid var(--line);
+  border-radius: 14px;
   background: var(--field);
 }
 
@@ -406,11 +420,59 @@ select:focus {
   line-height: 1.35;
 }
 
-.claim-limit-box {
+.claim-limit-box,
+.liquidity-box {
   margin-top: 16px;
   padding: 14px;
+  border-radius: 14px;
+}
+
+.claim-limit-box {
   color: white;
-  background: var(--blue);
+  background: linear-gradient(135deg, var(--blue), #182f5e);
+}
+
+.liquidity-box {
+  border: 1px solid rgba(40, 160, 240, 0.28);
+  background: linear-gradient(180deg, #ffffff, var(--cyan-soft));
+}
+
+.network-box {
+  margin-top: 16px;
+  padding: 14px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  color: white;
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, #213147 0%, #1b4add 56%, #28a0f0 100%);
+  box-shadow: 0 14px 34px rgba(27, 74, 221, 0.22);
+}
+
+.network-box img {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+}
+
+.network-box span,
+.network-box small {
+  display: block;
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 13px;
+}
+
+.network-box strong {
+  display: block;
+  margin-top: 2px;
+  color: #ffffff;
+  font-size: 20px;
+}
+
+.network-box small {
+  margin-top: 5px;
+  line-height: 1.35;
 }
 
 .claim-limit-box span,
@@ -424,9 +486,25 @@ select:focus {
   line-height: 1.35;
 }
 
-.claim-limit-box small {
+.claim-limit-box small,
+.liquidity-box small {
   margin-top: 8px;
   line-height: 1.4;
+}
+
+.liquidity-box span,
+.liquidity-box small {
+  display: block;
+  color: #31546f;
+  font-size: 13px;
+}
+
+.liquidity-box strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--blue);
+  font-size: 16px;
+  line-height: 1.35;
 }
 
 @media (max-width: 860px) {
@@ -462,5 +540,9 @@ select:focus {
   .claim-box {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .network-box {
+    align-items: flex-start;
   }
 }

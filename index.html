@@ -6,7 +6,7 @@
     <title>Preventa WKR | Wiker</title>
     <link rel="icon" href="./wkr-favicon.png" type="image/png" />
     <link rel="shortcut icon" href="./wkr-favicon.png" type="image/png" />
-    <link rel="stylesheet" href="./styles.css?v=20260609-5" />
+    <link rel="stylesheet" href="./styles.css?v=20260609-6" />
   </head>
   <body>
     <main class="page-shell">
@@ -16,20 +16,24 @@
             <img src="./wkr-favicon.png" alt="" />
           </div>
           <div class="brand-copy">
-            <p class="eyebrow">Wiker</p>
+            <p class="eyebrow">Wiker · Arbitrum One Mainnet</p>
             <h1>Preventa <span>WKR</span></h1>
-            <p class="target-network">Red objetivo: <strong>Arbitrum One</strong></p>
+            <div class="network-pills" aria-label="Red y medios de pago">
+              <span>USDC en Arbitrum</span>
+              <span>USDT/USD₮0 en Arbitrum</span>
+              <span>ETH en Arbitrum</span>
+            </div>
           </div>
         </div>
 
         <div class="value-strip" aria-label="Contexto Wiker">
           <div>
-            <strong>Mercado rural latinoamericano</strong>
-            <span>Mercado de productores de Latinoamérica</span>
+            <strong>Red Arbitrum One</strong>
+            <span>Inicio previsto: 10 de agosto de 2026 en mainnet, chain ID 42161</span>
           </div>
           <div>
-            <strong>Compra directa con monedas estables</strong>
-            <span>USDT, USDC y ETH</span>
+            <strong>Duración máxima</strong>
+            <span>3 fases de 30 días. Cierre temporal previsto: 8 de noviembre de 2026</span>
           </div>
           <div>
             <strong>Gobernanza Wiker</strong>
@@ -53,12 +57,13 @@
             <div id="statusMessage" class="status-message">Conectá tu wallet para ver la preventa.</div>
 
             <div class="input-block">
-              <label for="paymentToken">Moneda de pago <span>Elegí cómo pagar</span></label>
+              <label for="paymentToken">Moneda de pago <span>Solo red Arbitrum One</span></label>
               <select id="paymentToken">
-                <option value="USDT">USDT</option>
-                <option value="USDC">USDC</option>
-                <option value="ETH">ETH</option>
+                <option value="USDT">USDT / USD₮0 en Arbitrum</option>
+                <option value="USDC">USDC en Arbitrum</option>
+                <option value="ETH">ETH en Arbitrum</option>
               </select>
+              <p class="field-note">No envíes fondos desde Ethereum, Base, Polygon ni otra red. La preventa acepta pagos solamente en Arbitrum One.</p>
             </div>
 
             <div class="input-block">
@@ -111,6 +116,19 @@
               <span>Estado</span>
               <strong id="timeLabel">-</strong>
             </div>
+            <div class="network-box">
+              <img src="./arbitrum-logo.svg" alt="" aria-hidden="true" />
+              <div>
+                <span>Red de producción</span>
+                <strong>Arbitrum One Mainnet</strong>
+                <small>Chain ID 42161. Usá solamente wallets configuradas en Arbitrum One.</small>
+              </div>
+            </div>
+            <div class="liquidity-box">
+              <span>Comercialización prevista</span>
+              <strong>Pool WKR/USDC en Uniswap</strong>
+              <small>Previsto en Arbitrum One dentro de las 48 horas posteriores al cierre de la preventa. Si el cierre temporal es el 8 de noviembre de 2026, la apertura prevista del pool sería el 10 de noviembre de 2026.</small>
+            </div>
             <div class="claim-limit-box">
               <span>Límite por wallet</span>
               <strong id="claimLimitLabel">Una wallet solo puede tener hasta 10.005 WKR.</strong>
@@ -120,7 +138,7 @@
         </div>
       </section>
     </main>
-    <script src="./config.js?v=20260609-5"></script>
-    <script type="module" src="./app.js?v=20260609-5"></script>
+    <script src="./config.js?v=20260609-6"></script>
+    <script type="module" src="./app.js?v=20260609-6"></script>
   </body>
 </html>
